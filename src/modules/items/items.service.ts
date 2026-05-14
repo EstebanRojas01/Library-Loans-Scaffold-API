@@ -40,9 +40,7 @@ export class ItemsService {
 
   async findAll(query: FindItemsDto): Promise<PaginatedResult<Item>> {
     const { page, limit, search, available } = query;
-    const qb = this.itemsRepo
-      .createQueryBuilder('i')
-      .where('i.isActive = true');
+    const qb = this.itemsRepo.createQueryBuilder('i').where('i.isActive = true');
 
     if (search) {
       qb.andWhere('(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)', {
