@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Item } from './entities/item.entity';
@@ -46,8 +42,7 @@ export class ItemsService {
     const qb = this.itemsRepo.createQueryBuilder('i').where('i.isActive = true');
 
     if (search) {
-      qb.andWhere(
-        '(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)',
+      qb.andWhere('(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)', {
         { search: `%${search.toLowerCase()}%` },
       );
     }

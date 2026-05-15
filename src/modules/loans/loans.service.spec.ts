@@ -116,7 +116,7 @@ describe('LoansService', () => {
   });
 
   it('calcula multa correctamente con Math.ceil (R4)', async () => {
-    const dueAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // vencido hace 5 días
+    const dueAt = new Date(Date.now() - 4.9 * 24 * 60 * 60 * 1000); // ~4.9 días → ceil = 5
     const loan = {
       id: 'loan-1',
       userId: ACTOR.id,

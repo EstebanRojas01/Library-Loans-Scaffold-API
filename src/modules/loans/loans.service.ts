@@ -71,9 +71,7 @@ export class LoansService {
       ],
     });
     if (existingLoan) {
-      throw new ConflictException(
-        `El item ya está prestado (loanId: ${existingLoan.id})`,
-      );
+      throw new ConflictException(`El item ya está prestado (loanId: ${existingLoan.id})`);
     }
 
     await this.itemsService.findById(dto.itemId);
