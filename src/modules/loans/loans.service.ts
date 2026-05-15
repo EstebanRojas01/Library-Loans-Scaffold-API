@@ -36,7 +36,7 @@ export class LoansService {
 
     await this.usersService.findById(targetUserId);
 
-    // R1: dueAt debe ser mayor que ahora y no superar 30 días
+    // R1: dueAt debe ser posterior a ahora y no superar 30 días
     const loanedAt = new Date();
     const dueAt = new Date(dto.dueAt);
     const maxLoanDays = this.configService.get<number>('loans.maxLoanDays', 30);
@@ -49,7 +49,7 @@ export class LoansService {
       throw new BadRequestException(`dueAt no puede superar ${maxLoanDays} días desde hoy`);
     }
 
-    // R3: máximo 3 préstamos activos/vencidos por usuario
+    // R3: máximo préstamos activos/vencidos por usuario
     const maxActive = this.configService.get<number>('loans.maxActivePerUser', 3);
     const activeCount = await this.loansRepo.count({
       where: [
@@ -63,13 +63,20 @@ export class LoansService {
       );
     }
 
-    // R2: verificar copias disponibles antes de decrementar
-    const item = await this.itemsService.findById(dto.itemId);
-    if (item.availableCopies <= 0) {
-      throw new ConflictException('El item no tiene copias disponibles');
+    // R2: item disponible — no debe tener préstamo activo u overdue
+    const existingLoan = await this.loansRepo.findOne({
+      where: [
+        { itemId: dto.itemId, status: LoanStatus.ACTIVE },
+        { itemId: dto.itemId, status: LoanStatus.OVERDUE },
+      ],
+    });
+    if (existingLoan) {
+      throw new ConflictException(
+        `El item ya está prestado (loanId: ${existingLoan.id})`,
+      );
     }
 
-    await this.itemsService.decrementAvailable(dto.itemId);
+    await this.itemsService.findById(dto.itemId);
 
     const loan = this.loansRepo.create({
       userId: targetUserId,
@@ -78,7 +85,7 @@ export class LoansService {
       dueAt,
       status: LoanStatus.ACTIVE,
       returnedAt: null,
-      fineAmount: null,
+      fineAmount: 0,
     });
 
     return this.loansRepo.save(loan);
@@ -139,15 +146,13 @@ export class LoansService {
     loan.returnedAt = returnedAt;
     loan.status = LoanStatus.RETURNED;
 
-    if (returnedAt > loan.dueAt) {
-      const dailyFine = this.configService.get<number>('loans.dailyFineRate', 0.5);
-      const overdueDays = Math.ceil(
-        (returnedAt.getTime() - loan.dueAt.getTime()) / (24 * 60 * 60 * 1000),
-      );
-      loan.fineAmount = parseFloat((overdueDays * dailyFine).toFixed(2));
-    }
+    const dailyFine = this.configService.get<number>('loans.dailyFineRate', 0.5);
+    const overdueDays = Math.max(
+      0,
+      Math.ceil((returnedAt.getTime() - loan.dueAt.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+    loan.fineAmount = parseFloat((overdueDays * dailyFine).toFixed(2));
 
-    await this.itemsService.incrementAvailable(loan.itemId);
     return this.loansRepo.save(loan);
   }
 

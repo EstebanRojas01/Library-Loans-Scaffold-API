@@ -1,12 +1,13 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Item } from './entities/item.entity';
+import { Loan } from '../loans/entities/loan.entity';
+import { LoanStatus } from '../loans/enums/loan-status.enum';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { FindItemsDto } from './dto/find-items.dto';
@@ -17,19 +18,20 @@ export class ItemsService {
   constructor(
     @InjectRepository(Item)
     private readonly itemsRepo: Repository<Item>,
+    @InjectRepository(Loan)
+    private readonly loanRepo: Repository<Loan>,
   ) {}
 
   async create(dto: CreateItemDto): Promise<Item> {
-    if (dto.isbn) {
-      const existing = await this.itemsRepo.findOne({ where: { isbn: dto.isbn } });
-      if (existing) {
-        throw new ConflictException(`Item con ISBN ${dto.isbn} ya existe`);
-      }
+    const existing = await this.itemsRepo.findOne({ where: { code: dto.code } });
+    if (existing) {
+      throw new ConflictException(`Item con código ${dto.code} ya existe`);
     }
     const copies = dto.totalCopies ?? 1;
     const item = this.itemsRepo.create({
+      code: dto.code,
       title: dto.title,
-      author: dto.author,
+      author: dto.author ?? null,
       type: dto.type,
       isbn: dto.isbn ?? null,
       description: dto.description ?? null,
@@ -44,19 +46,17 @@ export class ItemsService {
     const qb = this.itemsRepo.createQueryBuilder('i').where('i.isActive = true');
 
     if (search) {
-      qb.andWhere('(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)', {
-        search: `%${search.toLowerCase()}%`,
-      });
+      qb.andWhere(
+        '(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)',
+        { search: `%${search.toLowerCase()}%` },
+      );
     }
     if (type) {
       qb.andWhere('i.type = :type', { type });
     }
     if (available !== undefined) {
-      if (available) {
-        qb.andWhere('i.availableCopies > 0');
-      } else {
-        qb.andWhere('i.availableCopies = 0');
-      }
+      const sub = `(SELECT COUNT(*) FROM loans l WHERE l."itemId" = i.id AND l.status IN ('active', 'overdue'))`;
+      qb.andWhere(available ? `(${sub}) = 0` : `(${sub}) > 0`);
     }
 
     qb.orderBy('i.title', 'ASC')
@@ -64,6 +64,22 @@ export class ItemsService {
       .take(limit);
 
     const [data, total] = await qb.getManyAndCount();
+
+    if (data.length > 0) {
+      const itemIds = data.map((i) => i.id);
+      const occupied = await this.loanRepo.find({
+        select: { itemId: true },
+        where: [
+          { itemId: In(itemIds), status: LoanStatus.ACTIVE },
+          { itemId: In(itemIds), status: LoanStatus.OVERDUE },
+        ],
+      });
+      const occupiedSet = new Set(occupied.map((l) => l.itemId));
+      data.forEach((item) => {
+        item.isAvailable = !occupiedSet.has(item.id);
+      });
+    }
+
     return { data, total, page, limit };
   }
 
@@ -72,23 +88,18 @@ export class ItemsService {
     if (!item) {
       throw new NotFoundException(`Item ${id} no encontrado`);
     }
+    const count = await this.loanRepo.count({
+      where: [
+        { itemId: id, status: LoanStatus.ACTIVE },
+        { itemId: id, status: LoanStatus.OVERDUE },
+      ],
+    });
+    item.isAvailable = count === 0;
     return item;
   }
 
   async update(id: string, dto: UpdateItemDto): Promise<Item> {
     const item = await this.findById(id);
-
-    if (dto.totalCopies !== undefined) {
-      const diff = dto.totalCopies - item.totalCopies;
-      const newAvailable = item.availableCopies + diff;
-      if (newAvailable < 0) {
-        throw new BadRequestException(
-          'No se puede reducir totalCopies por debajo de los préstamos activos',
-        );
-      }
-      item.availableCopies = newAvailable;
-    }
-
     Object.assign(item, dto);
     return this.itemsRepo.save(item);
   }
@@ -100,10 +111,6 @@ export class ItemsService {
   }
 
   async decrementAvailable(id: string): Promise<void> {
-    const item = await this.itemsRepo.findOne({ where: { id } });
-    if (!item || item.availableCopies <= 0) {
-      throw new ConflictException('No hay copias disponibles de este item');
-    }
     await this.itemsRepo.decrement({ id }, 'availableCopies', 1);
   }
 

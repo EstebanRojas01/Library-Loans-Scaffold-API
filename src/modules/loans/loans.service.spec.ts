@@ -14,6 +14,7 @@ const ACTOR = { id: 'user-1', email: 'test@test.com', role: UserRole.MEMBER };
 
 const ITEM = {
   id: 'item-1',
+  code: 'BK-001',
   title: 'Clean Code',
   author: 'Martin',
   type: ItemType.BOOK,
@@ -81,8 +82,8 @@ describe('LoansService', () => {
   it('crea un préstamo exitosamente', async () => {
     usersService.findById.mockResolvedValue({ id: ACTOR.id, isActive: true });
     loansRepo.count.mockResolvedValue(0);
-    itemsService.findById.mockResolvedValue({ ...ITEM, availableCopies: 1 });
-    itemsService.decrementAvailable.mockResolvedValue(undefined);
+    loansRepo.findOne.mockResolvedValue(null); // R2: item disponible
+    itemsService.findById.mockResolvedValue({ ...ITEM });
 
     const saved = { id: 'loan-1', status: LoanStatus.ACTIVE };
     loansRepo.create.mockReturnValue(saved);
@@ -91,18 +92,17 @@ describe('LoansService', () => {
     const result = await service.create({ itemId: ITEM.id, dueAt: makeDueAt(7) }, ACTOR);
 
     expect(result.status).toBe(LoanStatus.ACTIVE);
-    expect(itemsService.decrementAvailable).toHaveBeenCalledWith(ITEM.id);
   });
 
-  it('lanza ConflictException cuando item no tiene copias disponibles (R2)', async () => {
+  it('lanza ConflictException cuando item ya tiene préstamo activo (R2)', async () => {
     usersService.findById.mockResolvedValue({ id: ACTOR.id, isActive: true });
     loansRepo.count.mockResolvedValue(0);
-    itemsService.findById.mockResolvedValue({ ...ITEM, availableCopies: 0 });
+    loansRepo.findOne.mockResolvedValue({ id: 'blocking-loan', status: LoanStatus.ACTIVE });
 
     await expect(
       service.create({ itemId: ITEM.id, dueAt: makeDueAt(7) }, ACTOR),
     ).rejects.toBeInstanceOf(ConflictException);
-    expect(itemsService.decrementAvailable).not.toHaveBeenCalled();
+    expect(itemsService.findById).not.toHaveBeenCalled();
   });
 
   it('lanza ConflictException cuando usuario ya tiene 3 préstamos activos (R3)', async () => {
@@ -116,7 +116,7 @@ describe('LoansService', () => {
   });
 
   it('calcula multa correctamente con Math.ceil (R4)', async () => {
-    const dueAt = new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000); // vencido hace 1.5 días
+    const dueAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // vencido hace 5 días
     const loan = {
       id: 'loan-1',
       userId: ACTOR.id,
@@ -124,17 +124,16 @@ describe('LoansService', () => {
       status: LoanStatus.ACTIVE,
       dueAt,
       returnedAt: null,
-      fineAmount: null,
+      fineAmount: 0,
     };
 
     loansRepo.findOne.mockResolvedValue(loan);
-    itemsService.incrementAvailable.mockResolvedValue(undefined);
     loansRepo.save.mockImplementation(async (l: Partial<Loan>) => l);
 
     const result = await service.returnLoan('loan-1', ACTOR);
 
-    // 1.5 días → Math.ceil(1.5) = 2 días × 0.5 = 1.00
-    expect(result.fineAmount).toBe(1.0);
+    // 5 días × 0.50 = 2.50
+    expect(result.fineAmount).toBe(2.5);
     expect(result.status).toBe(LoanStatus.RETURNED);
   });
 });

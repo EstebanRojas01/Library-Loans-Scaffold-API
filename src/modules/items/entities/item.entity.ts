@@ -10,8 +10,7 @@ import {
 export enum ItemType {
   BOOK = 'book',
   MAGAZINE = 'magazine',
-  DVD = 'dvd',
-  OTHER = 'other',
+  EQUIPMENT = 'equipment',
 }
 
 @Entity({ name: 'items' })
@@ -19,11 +18,15 @@ export class Item {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 32 })
+  code!: string;
+
   @Column({ type: 'varchar', length: 255 })
   title!: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  author!: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  author?: string | null;
 
   @Column({ type: 'enum', enum: ItemType, default: ItemType.BOOK })
   type!: ItemType;
@@ -50,7 +53,5 @@ export class Item {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  get isAvailable(): boolean {
-    return this.availableCopies > 0;
-  }
+  isAvailable?: boolean;
 }

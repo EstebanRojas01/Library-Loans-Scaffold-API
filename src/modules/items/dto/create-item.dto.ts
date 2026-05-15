@@ -1,29 +1,35 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { ItemType } from '../entities/item.entity';
 
 export class CreateItemDto {
+  @ApiProperty({ example: 'BK-0042', description: 'Código único del item' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  code!: string;
+
   @ApiProperty({ example: 'Clean Code' })
   @IsString()
   @IsNotEmpty()
   title!: string;
-
-  @ApiProperty({ example: 'Robert C. Martin' })
-  @IsString()
-  @IsNotEmpty()
-  author!: string;
 
   @ApiPropertyOptional({ enum: ItemType, default: ItemType.BOOK })
   @IsOptional()
   @IsEnum(ItemType)
   type?: ItemType;
 
+  @ApiPropertyOptional({ example: 'Robert C. Martin' })
+  @IsOptional()
+  @IsString()
+  author?: string;
+
   @ApiPropertyOptional({ example: '978-0132350884' })
   @IsOptional()
   @IsString()
   isbn?: string;
 
-  @ApiPropertyOptional({ example: 'A handbook of agile software craftsmanship' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   description?: string;

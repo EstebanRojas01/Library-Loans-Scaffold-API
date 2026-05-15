@@ -52,8 +52,9 @@ export class InitialSchema1747180800000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE "items" (
         "id"               UUID NOT NULL DEFAULT uuid_generate_v4(),
+        "code"             VARCHAR(32) NOT NULL,
         "title"            VARCHAR(255) NOT NULL,
-        "author"           VARCHAR(255) NOT NULL,
+        "author"           VARCHAR(255),
         "isbn"             VARCHAR(20),
         "description"      TEXT,
         "totalCopies"      INTEGER NOT NULL DEFAULT 1,
@@ -66,11 +67,15 @@ export class InitialSchema1747180800000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      CREATE UNIQUE INDEX "UQ_items_code" ON "items" ("code")
+    `);
+
+    await queryRunner.query(`
       CREATE UNIQUE INDEX "UQ_items_isbn" ON "items" ("isbn") WHERE "isbn" IS NOT NULL
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "loans_status_enum" AS ENUM ('active', 'returned', 'overdue')
+      CREATE TYPE "loans_status_enum" AS ENUM ('active', 'returned', 'overdue', 'lost')
     `);
 
     await queryRunner.query(`
@@ -82,7 +87,7 @@ export class InitialSchema1747180800000 implements MigrationInterface {
         "dueAt"       TIMESTAMPTZ NOT NULL,
         "returnedAt"  TIMESTAMPTZ,
         "status"      "loans_status_enum" NOT NULL DEFAULT 'active',
-        "fineAmount"  DECIMAL(10,2),
+        "fineAmount"  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         "createdAt"   TIMESTAMPTZ NOT NULL DEFAULT now(),
         "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT now(),
         CONSTRAINT "PK_loans" PRIMARY KEY ("id"),
@@ -94,19 +99,24 @@ export class InitialSchema1747180800000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_loans_userId" ON "loans" ("userId")
+      CREATE INDEX "IDX_loans_itemId_status" ON "loans" ("itemId", "status")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_loans_itemId" ON "loans" ("itemId")
+      CREATE INDEX "IDX_loans_userId_status" ON "loans" ("userId", "status")
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX "IDX_loans_userId_status"`);
+    await queryRunner.query(`DROP INDEX "IDX_loans_itemId_status"`);
     await queryRunner.query(`DROP TABLE "loans"`);
     await queryRunner.query(`DROP TYPE "loans_status_enum"`);
+    await queryRunner.query(`DROP INDEX "UQ_items_isbn"`);
+    await queryRunner.query(`DROP INDEX "UQ_items_code"`);
     await queryRunner.query(`DROP TABLE "items"`);
     await queryRunner.query(`DROP TABLE "refresh_tokens"`);
+    await queryRunner.query(`DROP INDEX "UQ_users_email"`);
     await queryRunner.query(`DROP TABLE "users"`);
     await queryRunner.query(`DROP TYPE "users_role_enum"`);
   }
