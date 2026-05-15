@@ -45,8 +45,8 @@ export class Loan {
   @Column({ type: 'enum', enum: LoanStatus, default: LoanStatus.ACTIVE })
   status!: LoanStatus;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  fineAmount!: number | null;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: '0' })
+  fineAmount!: number;
 
   @CreateDateColumn()
   createdAt!: Date;

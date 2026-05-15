@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
+import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation.schema';
 import { HealthModule } from './modules/health/health.module';
@@ -44,6 +44,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     LoansModule,
   ],
   providers: [
+    { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

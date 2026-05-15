@@ -101,6 +101,20 @@ PATCH /api/loans/:id/mark-lost → marca préstamo como perdido
 | R4 | Multa = `Math.ceil(díasAtraso) × DAILY_FINE_RATE` | — |
 | R5 | FSM: `returned` y `lost` son estados terminales | `400 BadRequest` |
 
+## Transición automática a `overdue` (decisión de diseño)
+
+No se implementó un job cron. La transición a `overdue` es **lazy**: el sistema no actualiza
+el status en BD automáticamente, pero `LoansService` expone `markAllOverdue()` que puede
+invocarse manualmente o conectarse a un scheduler.
+
+Para consultar préstamos vencidos, `GET /api/loans?status=overdue` devuelve los préstamos
+cuyo status ya es `overdue` en BD. Si se quiere incluir los préstamos `active` con
+`dueAt < now()`, actualizar primero con `markAllOverdue()` o añadir un `@Cron` job.
+
+La regla de negocio R4 (multa) funciona correctamente independientemente del status
+almacenado: `returnLoan` calcula `Math.ceil((returnedAt - dueAt) / 1 día)` comparando
+timestamps, no el campo `status`.
+
 ## Swagger
 
 Auth JWT Bearer configurado en Swagger. Flujo:
