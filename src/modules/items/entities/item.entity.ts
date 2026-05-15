@@ -7,6 +7,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum ItemType {
+  BOOK = 'book',
+  MAGAZINE = 'magazine',
+  DVD = 'dvd',
+  OTHER = 'other',
+}
+
 @Entity({ name: 'items' })
 export class Item {
   @PrimaryGeneratedColumn('uuid')
@@ -17,6 +24,9 @@ export class Item {
 
   @Column({ type: 'varchar', length: 255 })
   author!: string;
+
+  @Column({ type: 'enum', enum: ItemType, default: ItemType.BOOK })
+  type!: ItemType;
 
   @Index({ unique: true, sparse: true })
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -39,4 +49,8 @@ export class Item {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  get isAvailable(): boolean {
+    return this.availableCopies > 0;
+  }
 }

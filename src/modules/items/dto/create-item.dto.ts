@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ItemType } from '../entities/item.entity';
 
 export class CreateItemDto {
   @ApiProperty({ example: 'Clean Code' })
@@ -11,6 +12,11 @@ export class CreateItemDto {
   @IsString()
   @IsNotEmpty()
   author!: string;
+
+  @ApiPropertyOptional({ enum: ItemType, default: ItemType.BOOK })
+  @IsOptional()
+  @IsEnum(ItemType)
+  type?: ItemType;
 
   @ApiPropertyOptional({ example: '978-0132350884' })
   @IsOptional()
