@@ -130,6 +130,7 @@ Auth JWT Bearer configurado en Swagger. Flujo:
 | B3 +4% | GitHub Actions CI (lint + test en cada push/PR) | ✅ |
 | B3 +1% | Docker build en CI | ✅ |
 | B4 +3% | Suite e2e (flujo completo + fineAmount) + matriz FSM con it.each | ✅ |
+| B1 +8% | Cola FIFO de reservas (POST/GET/DELETE /reservations, R-B1.1 – R-B1.4) | ✅ |
 
 ## Qué incluye este scaffold
 

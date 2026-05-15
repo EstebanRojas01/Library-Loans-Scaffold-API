@@ -7,6 +7,7 @@ import { Loan } from './entities/loan.entity';
 import { LoanStatus } from './enums/loan-status.enum';
 import { ItemsService } from '../items/items.service';
 import { UsersService } from '../users/users.service';
+import { ReservationsService } from '../reservations/reservations.service';
 import { UserRole } from '../users/entities/user.entity';
 import { ItemType } from '../items/entities/item.entity';
 
@@ -40,6 +41,11 @@ describe('LoansService', () => {
     incrementAvailable: jest.Mock;
   };
   let usersService: { findById: jest.Mock };
+  let reservationsService: {
+    getBlockingReservations: jest.Mock;
+    consumeReservation: jest.Mock;
+    fulfillFirst: jest.Mock;
+  };
   let configService: { get: jest.Mock };
 
   beforeEach(async () => {
@@ -55,6 +61,11 @@ describe('LoansService', () => {
       incrementAvailable: jest.fn(),
     };
     usersService = { findById: jest.fn() };
+    reservationsService = {
+      getBlockingReservations: jest.fn().mockResolvedValue([]),
+      consumeReservation: jest.fn().mockResolvedValue(undefined),
+      fulfillFirst: jest.fn().mockResolvedValue(undefined),
+    };
     configService = {
       get: jest.fn((key: string, def?: unknown) => {
         const map: Record<string, unknown> = {
@@ -72,6 +83,7 @@ describe('LoansService', () => {
         { provide: getRepositoryToken(Loan), useValue: loansRepo },
         { provide: ItemsService, useValue: itemsService },
         { provide: UsersService, useValue: usersService },
+        { provide: ReservationsService, useValue: reservationsService },
         { provide: ConfigService, useValue: configService },
       ],
     }).compile();

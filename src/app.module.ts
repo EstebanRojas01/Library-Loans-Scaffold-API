@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ItemsModule } from './modules/items/items.module';
 import { LoansModule } from './modules/loans/loans.module';
+import { ReservationsModule } from './modules/reservations/reservations.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -42,6 +43,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     UsersModule,
     ItemsModule,
     LoansModule,
+    ReservationsModule,
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },

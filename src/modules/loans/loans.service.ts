@@ -14,6 +14,7 @@ import { CreateLoanDto } from './dto/create-loan.dto';
 import { FindLoansDto } from './dto/find-loans.dto';
 import { ItemsService } from '../items/items.service';
 import { UsersService } from '../users/users.service';
+import { ReservationsService } from '../reservations/reservations.service';
 import { UserRole } from '../users/entities/user.entity';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { PaginatedResult } from '../users/users.service';
@@ -25,6 +26,7 @@ export class LoansService {
     private readonly loansRepo: Repository<Loan>,
     private readonly itemsService: ItemsService,
     private readonly usersService: UsersService,
+    private readonly reservationsService: ReservationsService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -75,6 +77,17 @@ export class LoansService {
     }
 
     await this.itemsService.findById(dto.itemId);
+
+    // R-B1.4: si hay reservas activas, solo el primero de la cola puede tomar el préstamo
+    const blocking = await this.reservationsService.getBlockingReservations(dto.itemId);
+    if (blocking.length > 0 && blocking[0].userId !== targetUserId) {
+      throw new ForbiddenException(
+        `El item tiene una reserva activa de otro usuario (reservationId: ${blocking[0].id})`,
+      );
+    }
+    if (blocking.length > 0 && blocking[0].userId === targetUserId) {
+      await this.reservationsService.consumeReservation(dto.itemId, targetUserId);
+    }
 
     const loan = this.loansRepo.create({
       userId: targetUserId,
@@ -151,7 +164,12 @@ export class LoansService {
     );
     loan.fineAmount = parseFloat((overdueDays * dailyFine).toFixed(2));
 
-    return this.loansRepo.save(loan);
+    const returned = await this.loansRepo.save(loan);
+
+    // R-B1.2: notificar al primer usuario en cola de reservas
+    await this.reservationsService.fulfillFirst(returned.itemId);
+
+    return returned;
   }
 
   async markLost(id: string, actor: AuthenticatedUser): Promise<Loan> {
