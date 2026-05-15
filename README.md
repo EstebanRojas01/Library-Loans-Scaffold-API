@@ -1,8 +1,112 @@
-# Library Loans API — Scaffold de examen parcial
+# Library Loans API
 
-Scaffold base para el examen parcial del curso **ISIS 3710 — Programación con Tecnologías Web**.
+Sistema de préstamos de biblioteca — ISIS 3710.
 
-> Este repositorio es el **punto de partida**. El enunciado completo será compartido durante el examen. El proyecto de referencia (con patrones aplicados) es [MediTrack](https://github.com/wareval0/MediTrack-API).
+## Setup rápido
+
+```bash
+# 1. Variables de entorno
+cp .env.example .env
+
+# 2. Base de datos (Postgres 16)
+docker compose up -d
+
+# 3. Dependencias
+npm install
+
+# 4. Migraciones
+npm run migration:run
+
+# 5. Desarrollo
+npm run start:dev
+```
+
+Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+
+## Variables de entorno (.env)
+
+| Variable | Descripción | Default |
+|---|---|---|
+| `DB_HOST` | Host Postgres | — |
+| `DB_PORT` | Puerto Postgres | 5432 |
+| `DB_USER` | Usuario DB | — |
+| `DB_PASSWORD` | Password DB | — |
+| `DB_NAME` | Nombre DB | — |
+| `DB_SYNCHRONIZE` | Auto-sync esquema (solo dev) | `false` |
+| `JWT_ACCESS_SECRET` | Secret JWT access (≥32 chars) | — |
+| `JWT_ACCESS_EXPIRES_IN` | Expiración access token | `15m` |
+| `JWT_REFRESH_SECRET` | Secret JWT refresh (≥32 chars) | — |
+| `JWT_REFRESH_EXPIRES_IN` | Expiración refresh token | `7d` |
+| `BCRYPT_SALT_ROUNDS` | Rondas bcrypt (4-15) | `10` |
+| `MAX_ACTIVE_LOANS` | Máx. préstamos activos por usuario | `3` |
+| `DAILY_FINE_RATE` | Multa diaria por atraso (USD) | `0.50` |
+| `MAX_LOAN_DAYS` | Máximo días de préstamo | `30` |
+
+## Docker
+
+```bash
+docker compose up -d    # levanta Postgres
+docker compose down     # detiene y elimina contenedor
+docker compose down -v  # también elimina volumen (borra datos)
+```
+
+## Migraciones
+
+```bash
+npm run migration:run                                    # aplica pendientes
+npm run migration:revert                                 # revierte última
+npm run migration:generate src/database/migrations/Nombre  # genera desde entidades
+```
+
+**No usar `DB_SYNCHRONIZE=true` en producción.**
+
+## Scripts
+
+| Script | Descripción |
+|---|---|
+| `npm run start:dev` | Hot reload |
+| `npm run start:prod` | Producción (requiere build) |
+| `npm run build` | Compila a `dist/` |
+| `npm test` | Tests unitarios |
+| `npm run test:cov` | Tests con coverage |
+| `npm run lint` | ESLint + autofix |
+
+## Flujo básico
+
+```
+POST /api/auth/register   → crea cuenta
+POST /api/auth/login      → obtiene accessToken + refreshToken
+GET  /api/auth/me         → perfil del usuario autenticado
+
+POST  /api/items          → crea item (admin/librarian)
+GET   /api/items          → lista items activos (filtros: search, type, available)
+GET   /api/items/:id      → detalle de item
+PATCH /api/items/:id      → actualiza item
+DELETE /api/items/:id     → soft delete (isActive=false)
+
+POST  /api/loans             → crea préstamo (requiere dueAt en body)
+GET   /api/loans             → lista préstamos
+GET   /api/loans/:id         → detalle de préstamo
+PATCH /api/loans/:id/return  → devuelve item (calcula multa si vencido)
+PATCH /api/loans/:id/mark-lost → marca préstamo como perdido
+```
+
+## Reglas de negocio
+
+| Regla | Descripción | Excepción |
+|---|---|---|
+| R1 | `dueAt > ahora` y `≤ 30 días` | `400 BadRequest` |
+| R2 | Item sin copias disponibles | `409 Conflict` |
+| R3 | Usuario con ≥3 préstamos activos/vencidos | `409 Conflict` |
+| R4 | Multa = `Math.ceil(díasAtraso) × DAILY_FINE_RATE` | — |
+| R5 | FSM: `returned` y `lost` son estados terminales | `400 BadRequest` |
+
+## Swagger
+
+Auth JWT Bearer configurado en Swagger. Flujo:
+1. Login → copiar `accessToken`
+2. Click "Authorize" → pegar token
+3. Todos los endpoints protegidos disponibles
 
 ## Qué incluye este scaffold
 

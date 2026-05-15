@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -35,6 +36,20 @@ export class LoansService {
 
     await this.usersService.findById(targetUserId);
 
+    // R1: dueAt debe ser mayor que ahora y no superar 30 días
+    const loanedAt = new Date();
+    const dueAt = new Date(dto.dueAt);
+    const maxLoanDays = this.configService.get<number>('loans.maxLoanDays', 30);
+    const maxDueAt = new Date(loanedAt.getTime() + maxLoanDays * 24 * 60 * 60 * 1000);
+
+    if (dueAt <= loanedAt) {
+      throw new BadRequestException('dueAt debe ser posterior a la fecha actual');
+    }
+    if (dueAt > maxDueAt) {
+      throw new BadRequestException(`dueAt no puede superar ${maxLoanDays} días desde hoy`);
+    }
+
+    // R3: máximo 3 préstamos activos/vencidos por usuario
     const maxActive = this.configService.get<number>('loans.maxActivePerUser', 3);
     const activeCount = await this.loansRepo.count({
       where: [
@@ -43,16 +58,18 @@ export class LoansService {
       ],
     });
     if (activeCount >= maxActive) {
-      throw new BadRequestException(
+      throw new ConflictException(
         `El usuario ya tiene ${activeCount} préstamos activos (máximo: ${maxActive})`,
       );
     }
 
-    await this.itemsService.decrementAvailable(dto.itemId);
+    // R2: verificar copias disponibles antes de decrementar
+    const item = await this.itemsService.findById(dto.itemId);
+    if (item.availableCopies <= 0) {
+      throw new ConflictException('El item no tiene copias disponibles');
+    }
 
-    const maxLoanDays = this.configService.get<number>('loans.maxLoanDays', 30);
-    const loanedAt = new Date();
-    const dueAt = new Date(loanedAt.getTime() + maxLoanDays * 24 * 60 * 60 * 1000);
+    await this.itemsService.decrementAvailable(dto.itemId);
 
     const loan = this.loansRepo.create({
       userId: targetUserId,
@@ -131,6 +148,13 @@ export class LoansService {
     }
 
     await this.itemsService.incrementAvailable(loan.itemId);
+    return this.loansRepo.save(loan);
+  }
+
+  async markLost(id: string, actor: AuthenticatedUser): Promise<Loan> {
+    const loan = await this.findById(id, actor);
+    this.assertTransition(loan.status, LoanStatus.LOST);
+    loan.status = LoanStatus.LOST;
     return this.loansRepo.save(loan);
   }
 
