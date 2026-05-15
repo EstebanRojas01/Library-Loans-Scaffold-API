@@ -30,6 +30,7 @@ export class ItemsService {
     const item = this.itemsRepo.create({
       title: dto.title,
       author: dto.author,
+      type: dto.type,
       isbn: dto.isbn ?? null,
       description: dto.description ?? null,
       totalCopies: copies,
@@ -39,13 +40,16 @@ export class ItemsService {
   }
 
   async findAll(query: FindItemsDto): Promise<PaginatedResult<Item>> {
-    const { page, limit, search, available } = query;
+    const { page, limit, search, type, available } = query;
     const qb = this.itemsRepo.createQueryBuilder('i').where('i.isActive = true');
 
     if (search) {
       qb.andWhere('(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)', {
         search: `%${search.toLowerCase()}%`,
       });
+    }
+    if (type) {
+      qb.andWhere('i.type = :type', { type });
     }
     if (available !== undefined) {
       if (available) {
@@ -98,7 +102,7 @@ export class ItemsService {
   async decrementAvailable(id: string): Promise<void> {
     const item = await this.itemsRepo.findOne({ where: { id } });
     if (!item || item.availableCopies <= 0) {
-      throw new BadRequestException('No hay copias disponibles de este item');
+      throw new ConflictException('No hay copias disponibles de este item');
     }
     await this.itemsRepo.decrement({ id }, 'availableCopies', 1);
   }
