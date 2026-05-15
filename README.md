@@ -122,6 +122,14 @@ Auth JWT Bearer configurado en Swagger. Flujo:
 2. Click "Authorize" → pegar token
 3. Todos los endpoints protegidos disponibles
 
+## Bonos implementados
+
+| Bono | Descripción | Estado |
+|---|---|---|
+| B2 +5% | Refresh tokens stateful (POST /auth/refresh, POST /auth/logout) | ✅ |
+| B3 +4% | GitHub Actions CI (lint + test en cada push/PR) | ✅ |
+| B3 +1% | Docker build en CI | ✅ |
+
 ## Qué incluye este scaffold
 
 - **NestJS 10** inicializado.
