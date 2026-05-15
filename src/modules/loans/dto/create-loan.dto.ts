@@ -6,7 +6,10 @@ export class CreateLoanDto {
   @IsUUID()
   itemId!: string;
 
-  @ApiProperty({ description: 'Fecha de vencimiento (ISO 8601). Debe ser > ahora y ≤ 30 días.', example: '2026-06-14T00:00:00.000Z' })
+  @ApiProperty({
+    description: 'Fecha de vencimiento (ISO 8601). Debe ser > ahora y ≤ 30 días.',
+    example: '2026-06-14T00:00:00.000Z',
+  })
   @IsDateString()
   dueAt!: string;
 

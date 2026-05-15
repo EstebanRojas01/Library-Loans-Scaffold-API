@@ -33,7 +33,11 @@ function makeDueAt(daysFromNow = 7): string {
 describe('LoansService', () => {
   let service: LoansService;
   let loansRepo: { count: jest.Mock; create: jest.Mock; save: jest.Mock; findOne: jest.Mock };
-  let itemsService: { findById: jest.Mock; decrementAvailable: jest.Mock; incrementAvailable: jest.Mock };
+  let itemsService: {
+    findById: jest.Mock;
+    decrementAvailable: jest.Mock;
+    incrementAvailable: jest.Mock;
+  };
   let usersService: { findById: jest.Mock };
   let configService: { get: jest.Mock };
 
