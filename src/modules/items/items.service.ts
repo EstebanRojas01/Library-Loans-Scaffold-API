@@ -43,8 +43,8 @@ export class ItemsService {
 
     if (search) {
       qb.andWhere('(LOWER(i.title) LIKE :search OR LOWER(i.author) LIKE :search)', {
-        { search: `%${search.toLowerCase()}%` },
-      );
+        search: `%${search.toLowerCase()}%`,
+      });
     }
     if (type) {
       qb.andWhere('i.type = :type', { type });
