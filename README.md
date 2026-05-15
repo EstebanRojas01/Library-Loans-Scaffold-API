@@ -129,6 +129,7 @@ Auth JWT Bearer configurado en Swagger. Flujo:
 | B2 +5% | Refresh tokens stateful (POST /auth/refresh, POST /auth/logout) | ✅ |
 | B3 +4% | GitHub Actions CI (lint + test en cada push/PR) | ✅ |
 | B3 +1% | Docker build en CI | ✅ |
+| B4 +3% | Suite e2e (flujo completo + fineAmount) + matriz FSM con it.each | ✅ |
 
 ## Qué incluye este scaffold
 
