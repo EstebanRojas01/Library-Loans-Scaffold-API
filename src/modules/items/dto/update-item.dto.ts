@@ -1,7 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ItemType } from '../entities/item.entity';
 
 export class UpdateItemDto {
+  @ApiPropertyOptional({ enum: ItemType })
+  @IsOptional()
+  @IsEnum(ItemType)
+  type?: ItemType;
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
