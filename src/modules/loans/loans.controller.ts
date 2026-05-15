@@ -43,4 +43,10 @@ export class LoansController {
   returnLoan(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
     return this.loansService.returnLoan(id, actor);
   }
+
+  @Patch(':id/mark-lost')
+  @HttpCode(HttpStatus.OK)
+  markLost(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.loansService.markLost(id, actor);
+  }
 }
